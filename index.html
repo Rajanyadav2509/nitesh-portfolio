@@ -850,7 +850,7 @@ nav .btn.nav-cta:hover{transform:scale(1.04);text-decoration:none}
       <article class="case reveal">
         <button class="screen" data-play="148fdzCoJ7rss2pzkZS4_5VqSgXDdT9qB" data-title="Where to Move in OC — Ruchika Gupta, Realtor (USA)" aria-label="Play Where to Move in OC">
           <img src="covers/d_148fdzCoJ7rss2pzkZS4_5VqSgXDdT9qB.jpg" alt="" onerror="this.style.display='none'">
-          <video class="hoverplay" data-drive="148fdzCoJ7rss2pzkZS4_5VqSgXDdT9qB" muted loop playsinline preload="none" aria-hidden="true"></video>
+          <video class="hoverplay" data-drive="148fdzCoJ7rss2pzkZS4_5VqSgXDdT9qB" data-preview="previews/pv_148fdzCoJ7rss2pzkZS4_5VqSgXDdT9qB.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
           <span class="play"><i></i></span>
         </button>
         <div class="case-text">
@@ -867,7 +867,7 @@ nav .btn.nav-cta:hover{transform:scale(1.04);text-decoration:none}
       <article class="case reveal">
         <button class="screen" data-play="1qjttv54f_iQV4DkUGeyNUhUedzRRajr2" data-title="Ad 01 — vertical cut (9:16)" data-tall="1" aria-label="Play Ad 01 vertical cut">
           <img src="covers/d_1qjttv54f_iQV4DkUGeyNUhUedzRRajr2.jpg" alt="" onerror="this.style.display='none'">
-          <video class="hoverplay" data-drive="1qjttv54f_iQV4DkUGeyNUhUedzRRajr2" muted loop playsinline preload="none" aria-hidden="true"></video>
+          <video class="hoverplay" data-drive="1qjttv54f_iQV4DkUGeyNUhUedzRRajr2" data-preview="previews/pv_1qjttv54f_iQV4DkUGeyNUhUedzRRajr2.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
           <span class="play"><i></i></span>
         </button>
         <div class="case-text">
@@ -884,7 +884,7 @@ nav .btn.nav-cta:hover{transform:scale(1.04);text-decoration:none}
       <article class="case reveal">
         <button class="screen" data-play="1Dt2kP6kyJPq9GzDzUMR2FpHrTycPGPUI" data-title="Dr Swarupa — long-form health video" aria-label="Play Dr Swarupa long-form video">
           <img src="covers/d_1Dt2kP6kyJPq9GzDzUMR2FpHrTycPGPUI.jpg" alt="" onerror="this.style.display='none'">
-          <video class="hoverplay" data-drive="1Dt2kP6kyJPq9GzDzUMR2FpHrTycPGPUI" muted loop playsinline preload="none" aria-hidden="true"></video>
+          <video class="hoverplay" data-drive="1Dt2kP6kyJPq9GzDzUMR2FpHrTycPGPUI" data-preview="previews/pv_1Dt2kP6kyJPq9GzDzUMR2FpHrTycPGPUI.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
           <span class="play"><i></i></span>
         </button>
         <div class="case-text">
@@ -1269,7 +1269,7 @@ grid.innerHTML = WORK.map(w => `
   <button class="card reveal" data-cat="${w.c}" ${w.v ? `data-video="${w.v}"` : `data-play="${w.id}"`} data-title="${esc(w.t)}" ${w.tall ? 'data-tall="1"' : ""} aria-label="Play ${esc(w.t)}">
     <div class="thumb">
       <img loading="lazy" src="${w.img || `covers/d_${w.id}.jpg`}" alt="${esc(w.t)}: video edited by Nitesh Kumar" onerror="this.remove()">
-      ${w.v ? `<video class="hoverplay" src="${w.v}" muted loop playsinline preload="metadata" aria-hidden="true"></video>` : `<video class="hoverplay" data-drive="${w.id}" muted loop playsinline preload="none" aria-hidden="true"></video>`}
+      ${w.v ? `<video class="hoverplay" src="${w.v}" muted loop playsinline preload="metadata" aria-hidden="true"></video>` : `<video class="hoverplay" data-drive="${w.id}" data-preview="previews/pv_${w.id}.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>`}
       <span class="live">Preview</span>
       <span class="mini" aria-hidden="true"></span>
     </div>
@@ -1278,8 +1278,8 @@ grid.innerHTML = WORK.map(w => `
 
 
 // Hover to preview: every video below the hero plays muted while the pointer is over it and pauses (back to the first frame) when it leaves.
-// Local mp4 cards play instantly; Drive cards stream on hover — src is set only on hover so the page stays light.
-// If Drive refuses to stream a file, the cover stays and click-to-play still works.
+// Local mp4 cards play instantly; Drive cards now hover-play their local 8-second clip in previews/ (data-preview) — src is set only on hover so the page stays light.
+// If a preview file is missing, the Drive stream is used as a fallback; if that also fails, the cover stays and click-to-play still works.
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches && !reduceMotion;
 let activePreview = null;
@@ -1287,7 +1287,7 @@ function stopPreview(card){
   if (!card) return;
   const v = card.querySelector("video.hoverplay");
   clearTimeout(card._hoverTimer);
-  if (v) { v.pause(); v.currentTime = 0; if (v.dataset.drive) { v.removeAttribute("src"); v.load(); } }
+  if (v) { v.pause(); v.currentTime = 0; if (v.dataset.drive && !v.dataset.preview) { v.removeAttribute("src"); v.load(); } }
   card.classList.remove("playing");
   if (activePreview === card) activePreview = null;
 }
@@ -1306,7 +1306,7 @@ function attachHoverPreview(el){
     clearTimeout(el._hoverTimer);
     el._hoverTimer = setTimeout(() => {
       stopAllHoverPreviews();
-      if (v.dataset.drive && !v.getAttribute("src")) v.src = "https://drive.google.com/uc?export=download&id=" + v.dataset.drive;
+      if (v.dataset.drive && !v.getAttribute("src")) v.src = v.dataset.preview || ("https://drive.google.com/uc?export=download&id=" + v.dataset.drive);
       v.currentTime = 0;
       const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
       activePreview = el;
@@ -1472,7 +1472,7 @@ cform.addEventListener("submit", async e => {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   box.innerHTML = FEAT.map((f, i) => `<button class="slide${i === 0 ? " on" : ""}" ${f.v ? `data-video="${f.v}"` : `data-play="${f.id}"`} data-title="${f.t}" ${f.tall ? 'data-tall="1"' : ""} aria-label="Play ${f.t}">
       <img src="${f.img}" alt="">
-      ${f.v && !reduce ? `<video src="${f.v}" muted loop playsinline preload="none" aria-hidden="true"></video>` : ""}${!f.v && f.id && !reduce ? `<video class="hoverplay" data-drive="${f.id}" muted loop playsinline preload="none" aria-hidden="true"></video>` : ""}
+      ${f.v && !reduce ? `<video src="${f.v}" muted loop playsinline preload="none" aria-hidden="true"></video>` : ""}${!f.v && f.id && !reduce ? `<video class="hoverplay" data-drive="${f.id}" data-preview="previews/pv_${f.id}.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>` : ""}
       <span class="play"><i></i></span></button>`).join("");
   dots.innerHTML = FEAT.map((f, i) => `<button role="tab" aria-selected="${i === 0}" aria-label="${f.t}"></button>`).join("");
   const slides = [...box.children], dotBtns = [...dots.children], DUR = 2000;
