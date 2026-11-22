@@ -205,6 +205,10 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .card.playing .live{opacity:1}
 .card.playing .mini{opacity:0!important}
 .card.kb:hover .thumb img{transform:scale(1.12) translate(-2%,-2%);transition:transform 6s linear}
+.screen{position:relative;overflow:hidden}
+.screen video.hoverplay{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;opacity:0;transition:opacity .5s var(--ease);pointer-events:none}
+.screen.playing video.hoverplay{opacity:1}
+.screen.playing .play{opacity:0}
 
 /* number strip */
 .numstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:56px}
@@ -821,7 +825,7 @@ nav .btn.nav-cta:hover{transform:scale(1.04);text-decoration:none}
 <section id="work">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div><span class="mono"><span class="tc">02</span> · Selected work</span><h2>The edit bay</h2><p class="mono" style="margin-top:10px"><span id="vcount" data-count="34">34</span> selected videos</p></div>
+      <div><span class="mono"><span class="tc">02</span> · Selected work</span><h2>The edit bay</h2><p class="mono" style="margin-top:10px"><span id="vcount" data-count="34">34</span> selected videos</p><p class="mono" style="margin-top:6px">Hover any video to preview it — click to watch with sound</p></div>
       <div class="filters" role="group" aria-label="Filter work by category">
         <button class="chip" aria-pressed="true" data-filter="all">All</button>
         <button class="chip" aria-pressed="false" data-filter="edusure">EduSure</button>
@@ -846,6 +850,7 @@ nav .btn.nav-cta:hover{transform:scale(1.04);text-decoration:none}
       <article class="case reveal">
         <button class="screen" data-play="148fdzCoJ7rss2pzkZS4_5VqSgXDdT9qB" data-title="Where to Move in OC — Ruchika Gupta, Realtor (USA)" aria-label="Play Where to Move in OC">
           <img src="covers/d_148fdzCoJ7rss2pzkZS4_5VqSgXDdT9qB.jpg" alt="" onerror="this.style.display='none'">
+          <video class="hoverplay" data-drive="148fdzCoJ7rss2pzkZS4_5VqSgXDdT9qB" muted loop playsinline preload="none" aria-hidden="true"></video>
           <span class="play"><i></i></span>
         </button>
         <div class="case-text">
@@ -862,6 +867,7 @@ nav .btn.nav-cta:hover{transform:scale(1.04);text-decoration:none}
       <article class="case reveal">
         <button class="screen" data-play="1qjttv54f_iQV4DkUGeyNUhUedzRRajr2" data-title="Ad 01 — vertical cut (9:16)" data-tall="1" aria-label="Play Ad 01 vertical cut">
           <img src="covers/d_1qjttv54f_iQV4DkUGeyNUhUedzRRajr2.jpg" alt="" onerror="this.style.display='none'">
+          <video class="hoverplay" data-drive="1qjttv54f_iQV4DkUGeyNUhUedzRRajr2" muted loop playsinline preload="none" aria-hidden="true"></video>
           <span class="play"><i></i></span>
         </button>
         <div class="case-text">
@@ -878,6 +884,7 @@ nav .btn.nav-cta:hover{transform:scale(1.04);text-decoration:none}
       <article class="case reveal">
         <button class="screen" data-play="1Dt2kP6kyJPq9GzDzUMR2FpHrTycPGPUI" data-title="Dr Swarupa — long-form health video" aria-label="Play Dr Swarupa long-form video">
           <img src="covers/d_1Dt2kP6kyJPq9GzDzUMR2FpHrTycPGPUI.jpg" alt="" onerror="this.style.display='none'">
+          <video class="hoverplay" data-drive="1Dt2kP6kyJPq9GzDzUMR2FpHrTycPGPUI" muted loop playsinline preload="none" aria-hidden="true"></video>
           <span class="play"><i></i></span>
         </button>
         <div class="case-text">
@@ -1267,32 +1274,63 @@ grid.innerHTML = WORK.map(w => `
   <button class="card reveal" data-cat="${w.c}" ${w.v ? `data-video="${w.v}"` : `data-play="${w.id}"`} data-title="${esc(w.t)}" ${w.tall ? 'data-tall="1"' : ""} aria-label="Play ${esc(w.t)}">
     <div class="thumb">
       <img loading="lazy" src="${w.img || `covers/d_${w.id}.jpg`}" alt="${esc(w.t)}: video edited by Nitesh Kumar" onerror="this.remove()">
-      ${w.v ? `<video class="hoverplay" src="${w.v}" muted loop playsinline preload="none" aria-hidden="true"></video>` : ""}
+      ${w.v ? `<video class="hoverplay" src="${w.v}" muted loop playsinline preload="metadata" aria-hidden="true"></video>` : `<video class="hoverplay" data-drive="${w.id}" muted loop playsinline preload="none" aria-hidden="true"></video>`}
+      <span class="live">Preview</span>
       <span class="mini" aria-hidden="true"></span>
     </div>
     <div class="card-body"><h3>${esc(w.t)}</h3><p>${esc(w.d)}</p></div>
   </button>`).join("");
 
 
-// Hover to preview: the card's video plays muted while the pointer is over it and stops when it leaves.
-const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-if (canHover) {
-  grid.querySelectorAll(".card").forEach(card => {
-    const v = card.querySelector("video.hoverplay");
-    if (!v) { card.classList.add("kb"); return; }
-    card.addEventListener("mouseenter", () => {
-      card.classList.add("playing");
+// Hover to preview: every video below the hero plays muted while the pointer is over it and pauses (back to the first frame) when it leaves.
+// Local mp4 cards play instantly; Drive cards stream on hover — src is set only on hover so the page stays light.
+// If Drive refuses to stream a file, the cover stays and click-to-play still works.
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches && !reduceMotion;
+let activePreview = null;
+function stopPreview(card){
+  if (!card) return;
+  const v = card.querySelector("video.hoverplay");
+  clearTimeout(card._hoverTimer);
+  if (v) { v.pause(); v.currentTime = 0; if (v.dataset.drive) { v.removeAttribute("src"); v.load(); } }
+  card.classList.remove("playing");
+  if (activePreview === card) activePreview = null;
+}
+function stopAllHoverPreviews(){
+  document.querySelectorAll(".card.playing, .screen.playing").forEach(stopPreview);
+}
+function attachHoverPreview(el){
+  const v = el.querySelector("video.hoverplay");
+  if (!v) { el.classList.add("kb"); return; }
+  if (v.dataset.drive) {
+    v.addEventListener("error", () => { el.dataset.hoverFailed = "1"; stopPreview(el); });
+  }
+  v.addEventListener("playing", () => el.classList.add("playing"));
+  el.addEventListener("mouseenter", () => {
+    if (el.dataset.hoverFailed) return;
+    clearTimeout(el._hoverTimer);
+    el._hoverTimer = setTimeout(() => {
+      stopAllHoverPreviews();
+      if (v.dataset.drive && !v.getAttribute("src")) v.src = "https://drive.google.com/uc?export=download&id=" + v.dataset.drive;
       v.currentTime = 0;
       const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
-    });
-    card.addEventListener("mouseleave", () => {
-      card.classList.remove("playing");
-      v.pause(); v.currentTime = 0;
-    });
+      activePreview = el;
+    }, 250);
   });
+  el.addEventListener("mouseleave", () => stopPreview(el));
+}
+if (canHover) {
+  grid.querySelectorAll(".card").forEach(attachHoverPreview);
+  document.querySelectorAll(".screen").forEach(attachHoverPreview);
+  if ("IntersectionObserver" in window) {
+    const vio = new IntersectionObserver(entries => entries.forEach(en => { if (!en.isIntersecting) stopPreview(en.target); }), {threshold: 0});
+    document.querySelectorAll(".card, .screen").forEach(el => vio.observe(el));
+  }
+  document.addEventListener("visibilitychange", () => { if (document.hidden) stopAllHoverPreviews(); });
 }
 
 document.querySelectorAll(".chip").forEach(chip => chip.addEventListener("click", () => {
+  stopAllHoverPreviews();
   document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c === chip));
   const f = chip.dataset.filter;
   grid.querySelectorAll(".card").forEach(card => card.hidden = !(f === "all" || card.dataset.cat === f));
@@ -1301,6 +1339,7 @@ document.querySelectorAll(".chip").forEach(chip => chip.addEventListener("click"
 const modal = document.getElementById("modal"), frame = document.getElementById("frame");
 let lastFocus = null;
 function openVideo(id, title, tall, local){
+  stopAllHoverPreviews();
   lastFocus = document.activeElement;
   document.getElementById("modal-title").textContent = title;
   frame.className = "frame" + (tall ? " tall" : "");
