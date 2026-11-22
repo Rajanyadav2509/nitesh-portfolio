@@ -208,7 +208,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .screen{position:relative;overflow:hidden}
 .screen video.hoverplay{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;opacity:0;transition:opacity .5s var(--ease);pointer-events:none}
 .screen.playing video.hoverplay{opacity:1}
-.screen.playing .play{opacity:0}
+.screen.playing .play{opacity:0}.feat .slide video.hoverplay{opacity:0}.feat .slide.playing video.hoverplay{opacity:1}.feat .slide.playing .play{opacity:0}
 
 /* number strip */
 .numstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:56px}
@@ -1297,7 +1297,7 @@ function stopPreview(card){
   if (activePreview === card) activePreview = null;
 }
 function stopAllHoverPreviews(){
-  document.querySelectorAll(".card.playing, .screen.playing").forEach(stopPreview);
+  document.querySelectorAll(".card.playing, .screen.playing, .slide.playing").forEach(stopPreview);
 }
 function attachHoverPreview(el){
   const v = el.querySelector("video.hoverplay");
@@ -1481,14 +1481,14 @@ cform.addEventListener("submit", async e => {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   box.innerHTML = FEAT.map((f, i) => `<button class="slide${i === 0 ? " on" : ""}" ${f.v ? `data-video="${f.v}"` : `data-play="${f.id}"`} data-title="${f.t}" ${f.tall ? 'data-tall="1"' : ""} aria-label="Play ${f.t}">
       <img src="${f.img}" alt="">
-      ${f.v && !reduce ? `<video src="${f.v}" muted loop playsinline preload="none" aria-hidden="true"></video>` : ""}
+      ${f.v && !reduce ? `<video src="${f.v}" muted loop playsinline preload="none" aria-hidden="true"></video>` : ""}${!f.v && f.id && !reduce ? `<video class="hoverplay" data-drive="${f.id}" muted loop playsinline preload="none" aria-hidden="true"></video>` : ""}
       <span class="play"><i></i></span></button>`).join("");
   dots.innerHTML = FEAT.map((f, i) => `<button role="tab" aria-selected="${i === 0}" aria-label="${f.t}"></button>`).join("");
   const slides = [...box.children], dotBtns = [...dots.children], DUR = 2000;
   let cur = 0, timer = null, paused = false;
   function show(n) {
     slides[cur].classList.remove("on"); dotBtns[cur].setAttribute("aria-selected", "false");
-    const pv = slides[cur].querySelector("video"); if (pv) pv.pause();
+    const pv = slides[cur].querySelector("video"); if (pv) pv.pause(); stopPreview(slides[cur]);
     cur = n;
     slides[cur].classList.add("on"); dotBtns[cur].setAttribute("aria-selected", "true");
     title.textContent = FEAT[cur].t; fmt.textContent = FEAT[cur].f;
@@ -1506,7 +1506,7 @@ cform.addEventListener("submit", async e => {
   dotBtns.forEach((d, i) => d.addEventListener("click", () => show(i)));
   box.addEventListener("mouseenter", () => { paused = true; clearTimeout(timer); bar.style.transition = "none"; });
   box.addEventListener("mouseleave", () => { paused = false; restart(); });
-  show(0);
+  if (canHover) slides.forEach(attachHoverPreview); show(0);
 })();
 
 
